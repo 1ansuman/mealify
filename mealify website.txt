@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mealify</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        input, button { padding: 10px; margin: 5px; }
+        #meal-result, #health-score, #ideas-list { margin-top: 20px; font-size: 1.2em; }
+    </style>
+</head>
+<body>
+    <h1>Mealify</h1>
+    <p>Enter ingredients you have, and we'll suggest a meal!</p>
+    <input type="text" id="ingredients" placeholder="Enter ingredients (comma-separated)">
+    <button onclick="getMeal()">Get a Meal Suggestion</button>
+    <div id="meal-result"></div>
+    
+    <h2>Scan Food Barcode</h2>
+    <input type="text" id="barcode" placeholder="Enter barcode number">
+    <button onclick="scanBarcode()">Check Health Score</button>
+    <div id="health-score"></div>
+    
+    <h2>Share Your Meal Ideas</h2>
+    <input type="text" id="idea" placeholder="Enter your meal idea">
+    <button onclick="saveIdea()">Post Idea</button>
+    <ul id="ideas-list"></ul>
+    
+    <script>
+        const meals = [
+            { name: "Pasta Primavera", ingredients: ["pasta", "tomato", "broccoli"] },
+            { name: "Chicken Stir Fry", ingredients: ["chicken", "soy sauce", "vegetables"] },
+            { name: "Omelette", ingredients: ["eggs", "cheese", "onion"] },
+            { name: "Taco Bowl", ingredients: ["beef", "lettuce", "cheese"] },
+            { name: "Grilled Cheese Sandwich", ingredients: ["bread", "cheese", "butter"] }
+        ];
+
+        async function getMeal() {
+            let userIngredients = document.getElementById("ingredients").value.toLowerCase().split(",").map(i => i.trim());
+            let matchedMeals = meals.filter(meal => meal.ingredients.some(i => userIngredients.includes(i)));
+            
+            if (matchedMeals.length > 0) {
+                let result = matchedMeals[Math.floor(Math.random() * matchedMeals.length)].name;
+                document.getElementById("meal-result").innerText = `Suggested Meal: ${result}`;
+            } else {
+                let query = userIngredients.join("+");
+                let apiUrl = `https://www.themealdb.com/api/json/v1/1/search.php?s=${query}`;
+                
+                try {
+                    let response = await fetch(apiUrl);
+                    let data = await response.json();
+                    if (data.meals) {
+                        let mealName = data.meals[0].strMeal;
+                        document.getElementById("meal-result").innerText = `Suggested Meal: ${mealName}`;
+                    } else {
+                        document.getElementById("meal-result").innerText = "No matching meals found. Try different ingredients!";
+                    }
+                } catch (error) {
+                    document.getElementById("meal-result").innerText = "Error fetching meals. Please try again later.";
+                }
+            }
+        }
+        
+        async function scanBarcode() {
+            let barcode = document.getElementById("barcode").value.trim();
+            if (!barcode) {
+                document.getElementById("health-score").innerText = "Please enter a barcode.";
+                return;
+            }
+            
+            let apiUrl = `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`;
+            
+            try {
+                let response = await fetch(apiUrl);
+                let data = await response.json();
+                if (data.product) {
+                    let score = data.product.nutriscore_grade ? data.product.nutriscore_grade.toUpperCase() : "N/A";
+                    let reasons = data.product.ingredients_text || "No detailed ingredients available.";
+                    document.getElementById("health-score").innerHTML = `Health Score: ${score} (A is healthiest, E is least healthy) <br> Reasons: ${reasons}`;
+                } else {
+                    document.getElementById("health-score").innerText = "Product not found. Try a different barcode.";
+                }
+            } catch (error) {
+                document.getElementById("health-score").innerText = "Error fetching product data. Please try again later.";
+            }
+        }
+
+        function saveIdea() {
+            let ideaInput = document.getElementById("idea");
+            let ideaText = ideaInput.value.trim();
+            if (ideaText === "") {
+                alert("Please enter a meal idea before posting.");
+                return;
+            }
+            let ideaList = document.getElementById("ideas-list");
+            let newIdea = document.createElement("li");
+            newIdea.textContent = ideaText;
+            ideaList.appendChild(newIdea);
+            ideaInput.value = "";
+        }
+    </script>
+</body>
+</html>
